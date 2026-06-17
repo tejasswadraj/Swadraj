@@ -1,0 +1,270 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-amber-glow: #ffb300;
+  --color-zinc-850: #1a1e26;
+  --color-zinc-805: #161921;
+}
+
+@layer utilities {
+  .font-tech {
+    font-family: 'Share Tech Mono', monospace;
+  }
+  
+  /* Squeeze rows and compact spreadsheet styles */
+  .compact-spreadsheet td, .compact-spreadsheet th {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
+/* Global professional style configuration */
+html, body {
+  background-color: #060709;
+  color: #ebf1fa;
+  font-family: 'Outfit', sans-serif;
+}
+
+body {
+  background-image: 
+    radial-gradient(circle at 50% 20%, rgba(255, 179, 0, 0.04) 0%, rgba(6, 7, 9, 1) 75%);
+}
+
+/* Glass panel and cards styling */
+.industrial-panel {
+  background: rgba(13, 15, 19, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glow-subtle {
+  box-shadow: 0 4px 20px -2px rgba(255, 179, 0, 0.05);
+}
+
+/* Scrollbars for refined grid */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #090a0d;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 179, 0, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 179, 0, 0.6);
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.98); }
+}
+
+.status-flash {
+  animation: pulse-slow 3s infinite ease-in-out;
+}
+
+.industrial-btn {
+  font-family: 'Share Tech Mono', monospace;
+  background-color: rgba(255, 179, 0, 0.05);
+  border: 1px solid rgba(255, 179, 0, 0.4);
+  color: #ffb300;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.industrial-btn:hover {
+  background-color: #ffb300;
+  color: #07080a;
+  box-shadow: 0 0 12px rgba(255, 179, 0, 0.45);
+  border-color: #ffb300;
+}
+
+.industrial-btn-danger {
+  font-family: 'Share Tech Mono', monospace;
+  background-color: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.industrial-btn-danger:hover {
+  background-color: #ef4444;
+  color: white;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+  border-color: #ef4444;
+}
+
+.industrial-btn-primary {
+  font-family: 'Share Tech Mono', monospace;
+  background-color: #ffb300;
+  color: #07080a;
+  font-weight: bold;
+  border: 1px solid #ffb300;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.industrial-btn-primary:hover {
+  background-color: white;
+  border-color: white;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.3);
+}
+
+.industrial-input {
+  background-color: #0d0f13;
+  border: 1px solid #1d2636;
+  color: white;
+  font-family: 'JetBrains Mono', monospace;
+  transition: all 0.15s ease-in-out;
+}
+
+.industrial-input:focus {
+  border-color: #ffb300;
+  outline: none;
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.15);
+}
+
+.industrial-select {
+  background-color: #0d0f13;
+  border: 1px solid #1d2636;
+  color: white;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+
+.industrial-select:focus {
+  border-color: #ffb300;
+  outline: none;
+}
+
+/* --- Added Custom Animation & Utility Classes for Swadraj Improvisations --- */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.2), inset 0 0 2px rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5), inset 0 0 5px rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.7);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stagger delay helpers */
+.delay-50 { animation-delay: 50ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+
+/* Interactive Hover effects */
+.glow-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glow-card-hover:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 179, 0, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(255, 179, 0, 0.15), 0 0 15px rgba(255, 179, 0, 0.08);
+}
+
+.glow-card-hover-rose {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glow-card-hover-rose:hover {
+  transform: translateY(-4px);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.15), 0 0 15px rgba(239, 68, 68, 0.08);
+}
+
+.glow-card-hover-emerald {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glow-card-hover-emerald:hover {
+  transform: translateY(-4px);
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.15), 0 0 15px rgba(16, 185, 129, 0.08);
+}
+
+.table-row-hover {
+  transition: background-color 0.15s ease;
+}
+.table-row-hover:hover {
+  background-color: rgba(255, 179, 0, 0.04) !important;
+}
+
+.neon-pulse-rose {
+  animation: neonPulse 2s infinite ease-in-out;
+}
+
+.shimmer-bar {
+  background: linear-gradient(90deg, #161921 25%, #1d2433 50%, #161921 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.glow-text-rose {
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.glow-text-emerald {
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.glow-text-amber {
+  text-shadow: 0 0 8px rgba(255, 179, 0, 0.5);
+}
