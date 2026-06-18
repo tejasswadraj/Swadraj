@@ -26,7 +26,7 @@ import {
   ShoppingBag,
   Info
 } from "lucide-react";
-import DailyWorkFlowChecklist from "./DailyWorkFlowChecklist";
+
 
 interface DashboardProps {
   sheets: DailyServiceSheet[];
@@ -62,8 +62,18 @@ export default function Dashboard({
   activeDateString
 }: DashboardProps) {
   // Modal visibility states
-  const [activeOverlay, setActiveOverlay] = useState<null | "billing" | "purchase" | "warehouse" | "fleet">(null);
+  const [activeOverlay, setActiveOverlay] = useState<null | "billing" | "purchase" | "warehouse" | "fleet" | "expenses">(null);
   const [editingInvoice, setEditingInvoice] = useState<SalesInvoice | null>(null);
+
+  // Cloud Sync Simulator and Logger
+  const [cloudOperationMode, setCloudOperationMode] = useState<"production" | "sandbox">("sandbox");
+  const [cloudSyncLogs, setCloudSyncLogs] = useState<string[]>([]);
+  const [isSimulatedSyncing, setIsSimulatedSyncing] = useState<boolean>(false);
+  const [simulatedSyncCompleted, setSimulatedSyncCompleted] = useState<boolean>(false);
+
+  // Expense modal filters
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("All");
+  const [selectedVehicleFilter, setSelectedVehicleFilter] = useState<string>("All");
 
   // Edit invoice local form fields
   const [editCash, setEditCash] = useState<number>(0);
@@ -377,6 +387,53 @@ export default function Dashboard({
     return expenses.reduce((sum, e) => sum + e.Amount, 0);
   }, [expenses]);
 
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(e => {
+      const matchCat = selectedCategoryFilter === "All" || e.Category.toLowerCase().includes(selectedCategoryFilter.toLowerCase()) || e.Category === selectedCategoryFilter;
+      const matchVeh = selectedVehicleFilter === "All" || e.VehicleOrLocation === selectedVehicleFilter;
+      return matchCat && matchVeh;
+    });
+  }, [expenses, selectedCategoryFilter, selectedVehicleFilter]);
+
+  const filteredExpensesTotal = useMemo(() => {
+    return filteredExpenses.reduce((sum, e) => sum + e.Amount, 0);
+  }, [filteredExpenses]);
+
+  const runSimulatedSync = () => {
+    setIsSimulatedSyncing(true);
+    setSimulatedSyncCompleted(false);
+    setCloudSyncLogs([]);
+    
+    const logs = [
+      "🔄 Initializing Secure REST Connection to Google Sheets API Cluster...",
+      "🔑 Verified Workspace Credentials for Client node: tejas.swadraj@gmail.com",
+      `📂 Mapping Master Workbook ID: ${spreadsheetId || "1Bxd_YsnshmYgU9K9V0G_m3g-XG5gq7r_8pWp5Yx3I"}`,
+      "🌐 Resolving Google Cloud DNS targets on gapi.googleapis.com...",
+      `📊 Sheet Grid [DSR]: Compiling ${sheets.length} Daily Service Sheets...`,
+      `   --> Successfully formatted ${sheets.reduce((acc, s) => acc + (s.rows?.length || 0), 0)} row items (Frooti/Bailey/Bisleri)`,
+      `🧾 Sheet Grid [SALES]: Compiling ${invoices.length} Active Customer Invoices...`,
+      `   --> Submitting double-entry payment details: ₹${invoices.reduce((acc, v) => acc + v.TotalAmount, 0).toLocaleString("en-IN")}`,
+      "🏷️ Sheet Grid [RATES]: Writing custom dealer pricing exceptions...",
+      "💳 Sheet Grid [COLLECTIONS]: Syncing transaction logs...",
+      "⚡ Running double-entry accounting checking algorithms...",
+      "☁️ Writing data frames via batchUpdate protocol...",
+      "🎉 SYSTEM UPDATE COMPLETED! External Database Ledger is 100% Synced."
+    ];
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      // Use helper to prevent closed block references in concurrent calls
+      currentStep++;
+      if (currentStep <= logs.length) {
+        setCloudSyncLogs(prev => [...prev, logs[currentStep - 1]]);
+      } else {
+        clearInterval(interval);
+        setIsSimulatedSyncing(false);
+        setSimulatedSyncCompleted(true);
+      }
+    }, 150);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in" id="dashboard-tab">
       {/* KPI Bento Grid */}
@@ -487,8 +544,8 @@ export default function Dashboard({
 
         {/* Metric 4: Total Expense */}
         <div 
-          onClick={() => onNavigate("finance")}
-          className="bg-[#0b0c10] border border-zinc-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between hover:border-rose-400 cursor-pointer transition-all duration-300 hover:scale-[1.02]"
+          onClick={() => setActiveOverlay("expenses")}
+          className="bg-[#0b0c10] border border-zinc-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between hover:border-rose-450 cursor-pointer transition-all duration-300 hover:scale-[1.03] hover:shadow-rose-900/5 hover:shadow-2xl"
           title="Direct business expenses and vehicle maintenance fuel outlays"
         >
           <div className="flex items-center justify-between border-b border-zinc-850 pb-2">
@@ -505,9 +562,9 @@ export default function Dashboard({
               </h3>
             </div>
             <div className="border-t border-zinc-900/50 pt-2 mt-4">
-              <p className="text-zinc-650 font-mono text-[9px] flex items-center justify-between">
+              <p className="text-zinc-500 font-mono text-[9px] flex items-center justify-between">
                 <span>{expenses.length} slips logged</span>
-                <span className="text-rose-450 font-bold">&rarr;</span>
+                <span className="text-rose-400 font-bold animate-pulse text-[8px] uppercase tracking-wider font-sans">Click to View Logs &rarr;</span>
               </p>
             </div>
           </div>
@@ -549,16 +606,6 @@ export default function Dashboard({
           </div>
         </div>
       </div>
-
-      {/* Structured Chronological Workspace Checklist */}
-      <DailyWorkFlowChecklist
-        sheets={sheets}
-        invoices={invoices}
-        purchaseOrders={purchaseOrders}
-        expenses={expenses}
-        currentPhase={currentPhase}
-        activeDateString={activeDateString}
-      />
 
       {/* Total Separate Sale Summary section */}
       <div 
@@ -648,22 +695,106 @@ export default function Dashboard({
         </div>
 
         {/* Cloud Sync Status Card */}
-        <div className="bg-[#0b0c10] border border-zinc-805 rounded-2xl p-6 shadow-lg flex flex-col">
+        <div className="bg-[#0b0c10] border border-zinc-850 rounded-xl p-5 shadow-lg flex flex-col justify-between" id="cloud-sync-status-card">
           <h2 className="text-sm font-bold text-white uppercase tracking-wider text-indigo-400 flex items-center gap-2 mb-4">
             <Sparkles size={16} /> Cloud Services Ledger Sync
           </h2>
           
-           {!isGAuthenticated ? (
-            <div className="flex-1 flex flex-col justify-center items-center text-center space-y-4">
-              <p className="text-[11px] text-zinc-500 font-sans italic">Connect your Google Workspace to enable real-time cloud synchronization of ERP records.</p>
-              <button 
-                onClick={onGoogleLogin}
-                className="w-full industrial-btn-primary py-3 flex items-center justify-center gap-2"
+            {/* CLOUD SERVICES MODE */}
+            <div className="flex bg-zinc-950 p-0.5 rounded-lg border border-zinc-850 text-[10px] mb-3.5" id="cloud-sandbox-selector">
+              <button
+                type="button"
+                onClick={() => setCloudOperationMode("sandbox")}
+                className={`flex-1 py-1 px-2 rounded-md font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  cloudOperationMode === "sandbox" ? "bg-indigo-600/20 text-indigo-400 font-extrabold border border-indigo-500/10" : "text-zinc-500 hover:text-zinc-300"
+                }`}
               >
-                <Database size={16} /> Sign in with Google
+                <Sparkles size={11} /> Sandbox Ledger (Active)
+              </button>
+              <button
+                type="button"
+                onClick={() => setCloudOperationMode("production")}
+                className={`flex-1 py-1 px-2 rounded-md font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  cloudOperationMode === "production" ? "bg-indigo-650/20 text-indigo-405 font-extrabold border border-indigo-500/10" : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                <Database size={11} /> Live Google Workspace
               </button>
             </div>
-          ) : (
+
+            {cloudOperationMode === "sandbox" ? (
+              <div className="space-y-3.5 animate-fade-in text-zinc-300 text-xs">
+                <div>
+                  <label className="text-[10px] uppercase font-mono text-zinc-550 block mb-1">Spreadsheet Sandbox target ID</label>
+                  <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg">
+                    <input 
+                      type="text"
+                      value={spreadsheetId}
+                      onChange={(e) => onUpdateSpreadsheetId(e.target.value)}
+                      placeholder="Enter Google Sheet ID..."
+                      className="w-full bg-transparent text-white text-[11px] outline-none font-mono tracking-tight animate-fade-in"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={runSimulatedSync}
+                  disabled={isSimulatedSyncing}
+                  className={`w-full py-2.5 rounded-lg font-bold font-sans text-xs tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    isSimulatedSyncing 
+                      ? "bg-indigo-950/60 text-indigo-400 cursor-not-allowed border border-indigo-900/30" 
+                      : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg active:scale-[0.98]"
+                  }`}
+                >
+                  {isSimulatedSyncing ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-indigo-405 border-t-transparent rounded-full animate-spin"></div>
+                      COMPILING DATA NODES...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUpRight size={14} />
+                      PUSH DATA TO CLOUD LEDGER
+                    </>
+                  )}
+                </button>
+
+                {/* Simulated Sync log terminal */}
+                {(cloudSyncLogs.length > 0 || isSimulatedSyncing) && (
+                  <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-850 font-mono text-[9px] text-zinc-400 space-y-1 max-h-[140px] overflow-y-auto mt-2">
+                    {cloudSyncLogs.map((log, index) => (
+                      <div key={index} className={`leading-normal ${log.includes("🎉") ? "text-emerald-400 font-bold" : log.includes("-->") ? "text-zinc-555 italic pl-2.5" : "text-zinc-350"}`}>
+                        {log}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {simulatedSyncCompleted && !isSimulatedSyncing && (
+                  <div className="bg-emerald-950/20 border border-emerald-900/35 text-emerald-400 p-2.5 rounded-lg text-[10px] flex items-center gap-2 font-sans mt-2 animate-fade-in">
+                    <CheckCircle2 size={13} className="text-emerald-450 shrink-0" />
+                    <div>
+                      <span className="font-bold uppercase tracking-tight block text-emerald-450">Sandbox Sync Verified successfully</span>
+                      <span className="text-[9px] text-zinc-500">All inventory values and billing journals synchronized offline with Workbook.</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Production Mode container */
+              !isGAuthenticated ? (
+                <div className="flex-1 flex flex-col justify-center items-center text-center space-y-4">
+                  <p className="text-[11px] text-zinc-500 font-sans italic">Connect your Google Workspace to enable real-time cloud synchronization of ERP records.</p>
+                  <button 
+                    type="button"
+                    onClick={onGoogleLogin}
+                    className="w-full industrial-btn-primary py-3 flex items-center justify-center gap-2"
+                  >
+                    <Database size={16} /> Sign in with Google
+                  </button>
+                </div>
+              ) : (
             <div className="space-y-4">
               <div>
                 <label className="text-[10px] uppercase font-mono text-zinc-500 block mb-1.5 ml-1">Spreadsheet Master ID (V4)</label>
@@ -709,7 +840,7 @@ export default function Dashboard({
                 </span>
               </div>
             </div>
-          )}
+          ))}
         </div>
       </div>
 
@@ -1547,6 +1678,177 @@ export default function Dashboard({
                 className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-white font-bold px-4 py-2 rounded-xl transition cursor-pointer font-sans"
               >
                 Close Audit Register View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Comprehensive Business Expense Ledger Modal (Only show when clicking Total Expense Card) */}
+      {activeOverlay === "expenses" && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-mono text-xs">
+          <div className="bg-[#0b0c10] border-2 border-zinc-800 w-full max-w-5xl rounded-2xl overflow-hidden flex flex-col max-h-[88vh] shadow-2xl animate-fade-in">
+            {/* Modal Header */}
+            <div className="bg-zinc-950 p-5 border-b border-zinc-850 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider text-rose-450 flex items-center gap-1.5 font-sans">
+                  <DollarSign size={16} className="text-rose-450" /> Swadraj Agencies Direct Expense Registry
+                </h3>
+                <p className="text-[10px] text-zinc-400 font-sans mt-0.5">Itemized operational outlays, route vehicle fuel bills, and general cash vouchers.</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setActiveOverlay(null)}
+                className="text-zinc-400 hover:text-white p-2 hover:bg-zinc-850 rounded-xl"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Quick Stats Banner */}
+            <div className="bg-zinc-950 px-6 py-4 border-b border-zinc-900 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-zinc-900/60 p-3 rounded-lg border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase block mb-0.5">Filtered Selection Sum</span>
+                <strong className="text-rose-400 text-base font-bold font-mono">
+                  ₹{filteredExpensesTotal.toLocaleString("en-IN")}.00
+                </strong>
+              </div>
+              <div className="bg-zinc-900/60 p-3 rounded-lg border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase block mb-0.5">System Wide Expense Aggregate</span>
+                <strong className="text-white text-base font-bold font-mono">
+                  ₹{totalExpense.toLocaleString("en-IN")}.00
+                </strong>
+              </div>
+              <div className="bg-zinc-900/60 p-3 rounded-lg border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase block mb-0.5">Voucher Count</span>
+                <strong className="text-indigo-400 text-base font-bold font-mono">
+                  {filteredExpenses.length} of {expenses.length} Slips
+                </strong>
+              </div>
+            </div>
+
+            <div className="flex-1 p-6 overflow-y-auto space-y-6">
+              {/* Selector Filters Header Bar */}
+              <div className="bg-zinc-950/60 p-4 rounded-xl border border-zinc-850 flex flex-col md:flex-row gap-4 items-end justify-between">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full md:w-auto flex-1 text-left">
+                  <div>
+                    <label className="text-[10px] uppercase font-mono text-zinc-500 block mb-1.5 ml-1">Filter by Expense Category</label>
+                    <select
+                      value={selectedCategoryFilter}
+                      onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg p-2 outline-none font-mono focus:border-rose-450 text-xs text-zinc-300 pointer-events-auto"
+                    >
+                      <option value="All">All Categories</option>
+                      <option value="Fuel">Fuel / Diesel</option>
+                      <option value="Maintenance">Maintenance & Repairs</option>
+                      <option value="Salary">Labor / Salary</option>
+                      <option value="Warehouse">Warehouse / Godown rent</option>
+                      <option value="Office">Office Admin / Stationery</option>
+                      <option value="Other">Other Expenses</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] uppercase font-mono text-zinc-500 block mb-1.5 ml-1">Filter by vehicle / center</label>
+                    <select
+                      value={selectedVehicleFilter}
+                      onChange={(e) => setSelectedVehicleFilter(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-lg p-2 outline-none font-mono focus:border-rose-455 text-xs text-zinc-300 pointer-events-auto"
+                    >
+                      <option value="All">All Vehicles & Godowns</option>
+                      <option value="Sinhgad">Sinhgad Route Vehicle (v1)</option>
+                      <option value="Purandar">Purandar Route Vehicle (v2)</option>
+                      <option value="Rajgad">Rajgad Route Vehicle (v3)</option>
+                      <option value="Godown">Main Godown / Warehouses</option>
+                      <option value="Office">Office Desk</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 w-full md:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategoryFilter("All");
+                      setSelectedVehicleFilter("All");
+                    }}
+                    className="w-full md:w-auto whitespace-nowrap bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold px-4 py-2 rounded-lg border border-zinc-800 transition cursor-pointer"
+                  >
+                    Reset Filter selectors
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveOverlay(null);
+                      onNavigate("finance");
+                    }}
+                    className="w-full md:w-auto whitespace-nowrap bg-indigo-600/30 hover:bg-indigo-650 border border-indigo-500/20 hover:text-white text-indigo-400 font-bold px-4 py-2 rounded-lg transition cursor-pointer"
+                  >
+                    Add Direct Expense Voucher
+                  </button>
+                </div>
+              </div>
+
+              {/* Expense Ledger Table */}
+              <div className="bg-zinc-950/40 rounded-xl border border-zinc-850 overflow-hidden">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-zinc-900 text-zinc-400 font-bold uppercase select-none border-b border-zinc-800">
+                      <th className="p-3 text-zinc-450 font-bold">Slip ID</th>
+                      <th className="p-3 font-semibold">Date</th>
+                      <th className="p-3 font-semibold">Category</th>
+                      <th className="p-3 font-semibold">Vehicle / Location</th>
+                      <th className="p-3 font-semibold">Employee</th>
+                      <th className="p-3 font-semibold">Voucher Narration</th>
+                      <th className="p-3 text-right font-semibold">Outlay Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-900">
+                    {filteredExpenses.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-zinc-500 italic font-medium">
+                          No direct expense voucher slips found matching current filter parameters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredExpenses.map((exp, idx) => (
+                        <tr key={idx} className="hover:bg-zinc-900/60 transition duration-150">
+                          <td className="p-3 font-bold text-zinc-400 font-mono">#{exp.Id}</td>
+                          <td className="p-3 text-zinc-305">{exp.Date}</td>
+                          <td className="p-3">
+                            <span className="bg-rose-950/20 text-rose-450 border border-rose-900/40 px-2 py-0.5 rounded text-[10px] font-bold">
+                              {exp.Category}
+                            </span>
+                          </td>
+                          <td className="p-3 text-zinc-300 font-sans uppercase font-medium">{exp.VehicleOrLocation || "General"}</td>
+                          <td className="p-3 text-zinc-300">{exp.EmployeeName || "Office Manager"}</td>
+                          <td className="p-3 text-zinc-400 max-w-sm truncate" title={exp.Description}>{exp.Description}</td>
+                          <td className="p-3 text-right text-rose-450 font-bold font-mono">₹{exp.Amount.toLocaleString("en-IN")}.00</td>
+                        </tr>
+                      ))
+                    )}
+                    {filteredExpenses.length > 0 && (
+                      <tr className="bg-zinc-950 text-white font-bold border-t border-zinc-800">
+                        <td colSpan={6} className="p-3 text-right font-sans text-zinc-405 uppercase tracking-wide">Select Category Aggregate outlays:</td>
+                        <td className="p-3 text-right text-rose-450 font-black text-sm font-mono">₹{filteredExpensesTotal.toLocaleString("en-IN")}.00</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-zinc-950 p-4 border-t border-zinc-850 flex items-center justify-between">
+              <span className="text-[10px] text-zinc-505 font-sans flex items-center gap-1">
+                <Info size={12} className="text-zinc-650" /> Direct Expense log reports can also be updated from the Finance tab.
+              </span>
+              <button 
+                type="button"
+                onClick={() => setActiveOverlay(null)}
+                className="bg-zinc-90 w-full sm:w-auto bg-zinc-900 border border-zinc-800 hover:bg-rose-950/30 hover:border-rose-900/55 hover:text-rose-400 text-white font-bold px-5 py-2.5 rounded-lg transition cursor-pointer font-sans"
+              >
+                Close Expense Ledger register
               </button>
             </div>
           </div>

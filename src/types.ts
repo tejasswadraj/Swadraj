@@ -17,6 +17,9 @@ export interface Product {
   Sale_Rate_Wholesale?: number; // Standard wholesale price from RATES Row 4
   Sale_Rate_Retail?: number; // Standard retail price (optional)
   Purchase_Rate?: number; // Standard purchased rate from factory for P&L tracking
+  Offer_Buy_Qty?: number; // Buy X Cases (e.g. 12)
+  Offer_Free_Qty?: number; // Get Y Cases free (e.g. 1)
+  Offer_Active?: boolean; // Promotional scheme active status
 }
 
 export interface Customer {
@@ -225,4 +228,39 @@ export interface PayrollRecord {
   PaymentStatus: "Draft" | "Processed" | "Paid" | "Hold";
   PaymentDate?: string;
   PaymentMethod?: "Cash" | "Bank Transfer" | "UPI";
+}
+
+export interface Vehicle {
+  Id: string;
+  Name: string; // "Rajgad" | "Sinhgad" | "Purandar"
+  RegistrationNumber: string; // e.g. "MH-14-GU-4521"
+  PrimaryDriverId: string; // References Employee.Id
+  PrimarySalespersonId: string; // References Employee.Id
+  LoadCapacityCases: number; // e.g. 150
+  Status: "Active" | "In-field" | "At-warehouse" | "Breakdown";
+}
+
+export interface Warehouse {
+  Id: string;
+  Name: string; // "Warehouse 1 (Main Godown)" | "Warehouse 2 (Secondary Space)"
+  Location: string; // Physical address
+  AssignedStaffIds: string[]; // References Employee.Id[]
+  CapacityCases: number;
+  Status: "Active" | "Maintenance" | "Inactive";
+}
+
+export interface SupplierCreditNote {
+  Id: string; // e.g. "SCN-0001"
+  SupplierCode: string;
+  SupplierName: string;
+  Date: string; // YYYY-MM-DD
+  ProductsReturned: {
+    ItemCode: string;
+    ItemName: string;
+    QuantityCases: number;
+    Reason: "Expired" | "Damaged" | "Excess Supply";
+  }[];
+  CreditAmount: number; // calculated refund/outstanding reduction
+  Notes?: string;
+  Status: "Pending" | "Applied" | "Settled";
 }

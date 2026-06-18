@@ -6,7 +6,7 @@ import { syncERPToGoogleSheets } from "./utils/sheetsSync";
  */
 
 import React, { useState, useMemo, useEffect } from "react";
-import { DailyServiceSheet, DailyServiceRow, SalesInvoice, CollectionHistory, RatesOverride, Customer, Expense, Supplier, PurchaseOrder } from "./types";
+import { DailyServiceSheet, DailyServiceRow, SalesInvoice, CollectionHistory, RatesOverride, Customer, Expense, Supplier, PurchaseOrder, Employee, AdvanceRecord, PayrollRecord, Vehicle, Warehouse, SupplierCreditNote } from "./types";
 import { getSeedSheets, getSeedInvoices, getSeedCollections } from "./data/mockState";
 import { RATES_OVERRIDES, CUSTOMERS, SUPPLIERS } from "./data/masterData";
 import { calculateDailyRow, getSheetNameForDate } from "./utils/math";
@@ -23,7 +23,7 @@ import AttendanceReport from "./components/AttendanceReport";
 import PayrollManagement from "./components/PayrollManagement";
 import DailyReports from "./components/DailyReports";
 import LogReport from "./components/LogReport";
-import { Employee, AdvanceRecord, PayrollRecord } from "./types";
+import ConnectedRegistries from "./components/ConnectedRegistries";
 
 import { 
   Building2, 
@@ -47,7 +47,8 @@ import {
   Server,
   Info,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCheck
 } from "lucide-react";
 
 export default function App() {
@@ -56,6 +57,10 @@ export default function App() {
   const [payrollSubTab, setPayrollSubTab] = useState<"roster" | "compensation">("roster");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [isDesignModalOpen, setIsDesignModalOpen] = useState<boolean>(false);
+
+  // Role Simulator Account State
+  const [activeRole, setActiveRole] = useState<"Admin" | "Warehouse" | "Logistics">("Admin");
 
   // Core system databases state
   const [sheets, setSheets] = useState<DailyServiceSheet[]>([]);
@@ -66,6 +71,34 @@ export default function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+
+  // First-class entity Registers State
+  const [vehicles, setVehicles] = useState<Vehicle[]>([
+    { Id: "veh_1", Name: "Sinhgad", RegistrationNumber: "MH-14-GX-1102", PrimaryDriverId: "emp_1", PrimarySalespersonId: "emp_1", LoadCapacityCases: 150, Status: "At-warehouse" },
+    { Id: "veh_2", Name: "Rajgad", RegistrationNumber: "MH-14-GX-8840", PrimaryDriverId: "emp_2", PrimarySalespersonId: "emp_2", LoadCapacityCases: 180, Status: "At-warehouse" },
+    { Id: "veh_3", Name: "Purandar", RegistrationNumber: "MH-14-GX-5519", PrimaryDriverId: "emp_3", PrimarySalespersonId: "emp_3", LoadCapacityCases: 150, Status: "At-warehouse" },
+  ]);
+
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([
+    { Id: "wh_1", Name: "Warehouse 1 (Main Godown)", Location: "Gate No. 4, Pimpri Chinchwad Industrial Area, Pune", AssignedStaffIds: ["emp_4"], CapacityCases: 5000, Status: "Active" },
+    { Id: "wh_2", Name: "Warehouse 2 (Secondary Space)", Location: "Building B, Moshi Toll Plaza Depot, Pune", AssignedStaffIds: [], CapacityCases: 2500, Status: "Active" },
+  ]);
+
+  const [supplierCreditNotes, setSupplierCreditNotes] = useState<SupplierCreditNote[]>([
+    {
+      Id: "SCN-0001",
+      SupplierCode: "SUP001",
+      SupplierName: "Parle Agro Pvt Ltd (Juices, Soda & Dairy)",
+      Date: "2026-06-12",
+      ProductsReturned: [
+        { ItemCode: "PTFR-0065-72-05", ItemName: "Frooti Fresh Mango Drink Pet 65ml", QuantityCases: 10, Reason: "Expired" }
+      ],
+      CreditAmount: 3100,
+      Notes: "Return of expired mango bottles accepted by depot coordinator Shinde.",
+      Status: "Applied"
+    }
+  ]);
+  
   
   const [employees, setEmployees] = useState<Employee[]>([
     { Id: "emp_1", Name: "Ramesh Shinde", Role: "Driver (Sinhgad)", Department: "Logistics", JoiningDate: "2024-01-10", StandardDailyWage: 800, Status: "Active" },
@@ -525,11 +558,42 @@ export default function App() {
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Active Simulated Role Selector */}
+          <div className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-800 p-1 rounded-xl">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase px-2 font-mono hidden md:inline">SYSTEM NODE ACCESS:</span>
+            <select
+              value={activeRole}
+              onChange={(e) => {
+                const role = e.target.value as "Admin" | "Warehouse" | "Logistics";
+                setActiveRole(role);
+                if (role === "Admin") selectTab("dashboard");
+                if (role === "Warehouse") selectTab("inventory");
+                if (role === "Logistics") selectTab("service-report");
+              }}
+              className="bg-[#07080a] text-xs font-black text-amber-glow border-0 rounded-lg py-1 px-3 focus:ring-1 focus:ring-amber-500 outline-none cursor-pointer"
+            >
+              <option value="Admin">🖥️ Office Manager (Admin)</option>
+              <option value="Warehouse">📦 Warehouse Staff</option>
+              <option value="Logistics">🚚 Logistics Team (Field)</option>
+            </select>
+          </div>
+
           {/* Working hours badge */}
           <div className="hidden md:flex items-center space-x-2 bg-zinc-900/60 px-3 py-1.5 rounded-lg border border-zinc-800 text-zinc-400 text-xs font-mono">
             <Clock size={12} className="text-[#ffb300]" />
             <span>08:00 AM - 08:00 PM</span>
           </div>
+
+          {/* Interactive design.md Documentation Button */}
+          <button 
+            onClick={() => setIsDesignModalOpen(true)}
+            className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-[#ffb300]/60 text-xs font-bold text-amber-glow transition active:scale-95 cursor-pointer"
+            id="open-design-modal-btn"
+            title="Open Swadraj ERP Design Ledger (design.md)"
+          >
+            <Info size={13} />
+            <span className="hidden sm:inline font-mono text-[10px]">design.md</span>
+          </button>
 
           <div className="hidden sm:flex items-center space-x-2 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
@@ -567,180 +631,200 @@ export default function App() {
         `} id="main-navigation-sidebar">
           <div className="space-y-4">
             {/* Section 1: Office Operations */}
-            <div className="space-y-1">
-              <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
-                {isSidebarCollapsed ? <span>🖥️</span> : <span>🖥️ Office Operations</span>}
-                {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded-md font-mono uppercase font-black tracking-widest">Core</span>}
+            {activeRole === "Admin" && (
+              <div className="space-y-1">
+                <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
+                  {isSidebarCollapsed ? <span>🖥️</span> : <span>🖥️ Office Operations</span>}
+                  {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded-md font-mono uppercase font-black tracking-widest">Core</span>}
+                </div>
+                
+                <button
+                  onClick={() => selectTab("dashboard")}
+                  title={isSidebarCollapsed ? "Dashboard" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "dashboard" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-dashboard"
+                >
+                  <LayoutDashboard size={14} />
+                  {!isSidebarCollapsed && <span>Dashboard</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("billing")}
+                  title={isSidebarCollapsed ? "Sales Billing" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "billing" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-billing"
+                >
+                  <ReceiptIndianRupee size={14} />
+                  {!isSidebarCollapsed && <span>Sales Billing</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("ar")}
+                  title={isSidebarCollapsed ? "Ledger & Outstanding" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "ar" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-ar"
+                >
+                  <UserSquare size={14} />
+                  {!isSidebarCollapsed && <span>Ledger & Outstanding</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("register-outlet")}
+                  title={isSidebarCollapsed ? "Outlet Master Desk" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "register-outlet" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-register-outlet"
+                >
+                  <Building2 size={14} />
+                  {!isSidebarCollapsed && <span>Outlet Master Desk</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("finance")}
+                  title={isSidebarCollapsed ? "Cash & Finance Desk" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "finance" ? "bg-amber-glow/10 text-amber-glow border-[#ffb300]/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-finance"
+                >
+                  <Coins size={14} />
+                  {!isSidebarCollapsed && <span>Cash & Finance Desk</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("payroll")}
+                  title={isSidebarCollapsed ? "Staff Attendance & Payroll" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "payroll" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-payroll"
+                >
+                  <Users size={14} />
+                  {!isSidebarCollapsed && <span>Staff & Payroll Node</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("procurement")}
+                  title={isSidebarCollapsed ? "Supplier Purchase" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "procurement" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-procurement"
+                >
+                  <Truck size={14} />
+                  {!isSidebarCollapsed && <span>Supplier Purchase</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("registries")}
+                  title={isSidebarCollapsed ? "Master Registries" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "registries" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-registries"
+                >
+                  <Server size={14} />
+                  {!isSidebarCollapsed && <span>Master Registries Desk</span>}
+                </button>
               </div>
-              
-              <button
-                onClick={() => selectTab("dashboard")}
-                title={isSidebarCollapsed ? "Dashboard" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "dashboard" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-dashboard"
-              >
-                <LayoutDashboard size={14} />
-                {!isSidebarCollapsed && <span>Dashboard</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("billing")}
-                title={isSidebarCollapsed ? "Sales Billing" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "billing" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-billing"
-              >
-                <ReceiptIndianRupee size={14} />
-                {!isSidebarCollapsed && <span>Sales Billing</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("ar")}
-                title={isSidebarCollapsed ? "Ledger & Outstanding" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "ar" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-ar"
-              >
-                <UserSquare size={14} />
-                {!isSidebarCollapsed && <span>Ledger & Outstanding</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("register-outlet")}
-                title={isSidebarCollapsed ? "Outlet Master Desk" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "register-outlet" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-register-outlet"
-              >
-                <Building2 size={14} />
-                {!isSidebarCollapsed && <span>Outlet Master Desk</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("finance")}
-                title={isSidebarCollapsed ? "Cash & Finance Desk" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "finance" ? "bg-amber-glow/10 text-amber-glow border-[#ffb300]/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-finance"
-              >
-                <Coins size={14} />
-                {!isSidebarCollapsed && <span>Cash & Finance Desk</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("payroll")}
-                title={isSidebarCollapsed ? "Staff Attendance & Payroll" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "payroll" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-payroll"
-              >
-                <Users size={14} />
-                {!isSidebarCollapsed && <span>Staff & Payroll Node</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("procurement")}
-                title={isSidebarCollapsed ? "Supplier Purchase" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "procurement" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-procurement"
-              >
-                <Truck size={14} />
-                {!isSidebarCollapsed && <span>Supplier Purchase</span>}
-              </button>
-            </div>
+            )}
 
             {/* Section 2: Warehouse Deck */}
-            <div className="space-y-1">
-              <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
-                {isSidebarCollapsed ? <span>📦</span> : <span>📦 Warehouse Deck</span>}
-                {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded font-mono">Store</span>}
+            {(activeRole === "Admin" || activeRole === "Warehouse") && (
+              <div className="space-y-1">
+                <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
+                  {isSidebarCollapsed ? <span>📦</span> : <span>📦 Warehouse Deck</span>}
+                  {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded font-mono">Store</span>}
+                </div>
+
+                <button
+                  onClick={() => selectTab("inventory")}
+                  title={isSidebarCollapsed ? "Stock Holding SKUs" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "inventory" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-inventory"
+                >
+                  <Database size={14} />
+                  {!isSidebarCollapsed && <span>Stock Holding SKUs</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("reconcile")}
+                  title={isSidebarCollapsed ? "Stock Reconciliation" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "reconcile" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-reconcile"
+                >
+                  <ClipboardCheck size={14} />
+                  {!isSidebarCollapsed && <span>Stock Reconciliation</span>}
+                </button>
               </div>
-
-              <button
-                onClick={() => selectTab("inventory")}
-                title={isSidebarCollapsed ? "Stock Holding SKUs" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "inventory" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-inventory"
-              >
-                <Database size={14} />
-                {!isSidebarCollapsed && <span>Stock Holding SKUs</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("reconcile")}
-                title={isSidebarCollapsed ? "Stock Reconciliation" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "reconcile" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-reconcile"
-              >
-                <ClipboardCheck size={14} />
-                {!isSidebarCollapsed && <span>Stock Reconciliation</span>}
-              </button>
-            </div>
+            )}
 
             {/* Section 3: Service Team */}
-            <div className="space-y-1">
-              <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
-                {isSidebarCollapsed ? <span>🚚</span> : <span>🚚 Service & Fleet</span>}
-                {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded font-mono font-bold">Logistics</span>}
-              </div>
+            {(activeRole === "Admin" || activeRole === "Logistics") && (
+              <div className="space-y-1">
+                <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
+                  {isSidebarCollapsed ? <span>🚚</span> : <span>🚚 Service & Fleet</span>}
+                  {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded font-mono font-bold">Logistics</span>}
+                </div>
 
-              <button
-                onClick={() => selectTab("service-report")}
-                title={isSidebarCollapsed ? "Vehicle Dispatch" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "service-report" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-service-report"
-              >
-                <ListOrdered size={14} />
-                {!isSidebarCollapsed && <span>Vehicle dispatch</span>}
-              </button>
-            </div>
+                <button
+                  onClick={() => selectTab("service-report")}
+                  title={isSidebarCollapsed ? "Vehicle Dispatch" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "service-report" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-service-report"
+                >
+                  <ListOrdered size={14} />
+                  {!isSidebarCollapsed && <span>Vehicle dispatch</span>}
+                </button>
+              </div>
+            )}
 
             {/* Section 4: Reports & Audits */}
-            <div className="space-y-1">
-              <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
-                {isSidebarCollapsed ? <span>📊</span> : <span>📊 Reports & Node</span>}
-                {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded font-mono font-bold">Audit</span>}
+            {activeRole === "Admin" && (
+              <div className="space-y-1">
+                <div className="text-[10px] font-black text-amber-glow/70 uppercase tracking-widest font-mono py-1 mb-1 border-b border-zinc-900 flex justify-between items-center px-1.5">
+                  {isSidebarCollapsed ? <span>📊</span> : <span>📊 Reports & Node</span>}
+                  {!isSidebarCollapsed && <span className="text-[7px] px-1.5 py-0.5 bg-zinc-900 border border-zinc-800 text-zinc-400 rounded font-mono font-bold">Audit</span>}
+                </div>
+
+                <button
+                  onClick={() => selectTab("daily-reports")}
+                  title={isSidebarCollapsed ? "Daily Sales Sheets" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "daily-reports" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-daily-reports"
+                >
+                  <FileText size={14} />
+                  {!isSidebarCollapsed && <span>Daily Sales Sheets</span>}
+                </button>
+
+                <button
+                  onClick={() => selectTab("log-report")}
+                  title={isSidebarCollapsed ? "Operational Log Report" : ""}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
+                    activeTab === "log-report" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
+                  } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
+                  id="nav-tab-log-report"
+                >
+                  <Activity size={14} />
+                  {!isSidebarCollapsed && <span>Operational Log Report</span>}
+                </button>
               </div>
-
-              <button
-                onClick={() => selectTab("daily-reports")}
-                title={isSidebarCollapsed ? "Daily Sales Sheets" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "daily-reports" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-daily-reports"
-              >
-                <FileText size={14} />
-                {!isSidebarCollapsed && <span>Daily Sales Sheets</span>}
-              </button>
-
-              <button
-                onClick={() => selectTab("log-report")}
-                title={isSidebarCollapsed ? "Operational Log Report" : ""}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold transition flex items-center space-x-2 cursor-pointer border ${
-                  activeTab === "log-report" ? "bg-amber-glow/10 text-amber-glow border-amber-glow/30" : "text-zinc-400 border-transparent hover:bg-zinc-950/40 hover:text-white"
-                } ${isSidebarCollapsed ? "justify-center p-2.5 space-x-0" : ""}`}
-                id="nav-tab-log-report"
-              >
-                <Activity size={14} />
-                {!isSidebarCollapsed && <span>Operational Log Report</span>}
-              </button>
-            </div>
+            )}
           </div>
 
           <div className="pt-4 border-t border-zinc-850 flex flex-col space-y-3">
@@ -842,6 +926,12 @@ export default function App() {
               expenses={expenses}
               sheets={reconciledSheets}
               activeSheetName={activeSheetName}
+              onUpdateInvoice={(upd) => setInvoices(prev => prev.map(inv => inv.BillId === upd.BillId ? upd : inv))}
+              onAddInvoice={(newInv) => setInvoices(prev => [newInv, ...prev])}
+              onAddExpense={(exp) => setExpenses(prev => [...prev, exp])}
+              vehicles={vehicles}
+              onUpdateVehicles={setVehicles}
+              customers={customers}
             />
           )}
 
@@ -932,6 +1022,19 @@ export default function App() {
             />
           )}
 
+          {activeTab === "registries" && (
+            <ConnectedRegistries
+              vehicles={vehicles}
+              onUpdateVehicles={setVehicles}
+              warehouses={warehouses}
+              onUpdateWarehouses={setWarehouses}
+              supplierCreditNotes={supplierCreditNotes}
+              onUpdateSupplierCreditNotes={setSupplierCreditNotes}
+              employees={employees}
+              suppliers={suppliers}
+            />
+          )}
+
           {activeTab === "log-report" && (
             <LogReport
               invoices={invoices}
@@ -943,6 +1046,147 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Design and Architecture Modal (design.md reader) */}
+      {isDesignModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in" id="design-md-modal-overlay">
+          <div className="bg-[#0b0c10] border border-zinc-800 rounded-3xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl relative">
+            
+            {/* Modal Header */}
+            <div className="p-6 border-b border-zinc-850 flex items-center justify-between bg-gradient-to-r from-zinc-950 to-zinc-900">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-[#ffb300]/10 border border-[#ffb300]/30 rounded-xl text-[#ffb300]">
+                  <Server size={18} fill="currentColor" fillOpacity={0.1} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black uppercase text-amber-glow tracking-wider font-mono text-[#ffb300]">Swadraj Agencies design.md spec</h3>
+                  <p className="text-[10px] text-zinc-500 font-mono font-black">STATED SOURCE: /design.md</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsDesignModalOpen(false)}
+                className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:border-red-500/50 text-zinc-400 hover:text-red-400 transition cursor-pointer"
+                id="close-design-modal-btn"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body (Rich Custom Rendered Content) */}
+            <div className="p-8 overflow-y-auto space-y-8 text-zinc-300 text-sm leading-relaxed" id="design-md-modal-body bg-[#07080a]">
+              <div>
+                <h4 className="text-xl font-bold text-white mb-2 tracking-tight">1. Brand & Unified Visual System</h4>
+                <p className="mb-4">
+                  Swadraj ERP implements a high-contrast <span className="text-[#ffb300] font-bold">Industrial Amber Dark Theme</span>. Deep slate grids and hazard amber accent points ensure high readability during late-evening deliveries and heavy warehouse operations.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-900 flex items-center space-x-2">
+                    <span className="w-3.5 h-3.5 rounded bg-[#07080a] border border-zinc-850 shrink-0" />
+                    <span className="text-[11px] font-mono font-bold text-zinc-400">Obsidian Black (#07080a)</span>
+                  </div>
+                  <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-900 flex items-center space-x-2">
+                    <span className="w-3.5 h-3.5 rounded bg-[#ffb300] border border-zinc-850 shrink-0" />
+                    <span className="text-[11px] font-mono font-bold text-zinc-400">Hazard Amber (#ffb300)</span>
+                  </div>
+                  <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-900 flex items-center space-x-2">
+                    <span className="w-3.5 h-3.5 rounded bg-[#10b981] border border-zinc-850 shrink-0" />
+                    <span className="text-[11px] font-mono font-bold text-zinc-400">Emerald Sync (#10b981)</span>
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-zinc-850" />
+
+              <div>
+                <h4 className="text-lg font-extrabold text-white mb-3">2. Fleet & Location Registries (Masters Dashboard)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-5 bg-zinc-950 border border-zinc-900 rounded-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 text-amber-glow opacity-5">
+                      <Truck size={60} />
+                    </div>
+                    <h5 className="text-[11px] font-mono text-amber-glow uppercase tracking-widest font-black mb-2 text-[#ffb300]">🚛 Active Delivery Fleet</h5>
+                    <ul className="space-y-2.5 font-mono text-xs">
+                      <li className="flex justify-between border-b border-zinc-900 pb-1.5">
+                        <span className="text-zinc-400">Sinhgad (MH-14-GX-1102)</span>
+                        <span className="text-amber-glow">Driver: Ramesh</span>
+                      </li>
+                      <li className="flex justify-between border-b border-zinc-900 pb-1.5">
+                        <span className="text-zinc-400">Rajgad (MH-14-GX-8840)</span>
+                        <span className="text-amber-glow">Driver: Sunil</span>
+                      </li>
+                      <li className="flex justify-between">
+                        <span className="text-zinc-400">Purandar (MH-14-GX-5519)</span>
+                        <span className="text-amber-glow">Driver: Sachin</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="p-5 bg-zinc-950 border border-zinc-900 rounded-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 text-amber-glow opacity-5">
+                      <Building2 size={60} />
+                    </div>
+                    <h5 className="text-[11px] font-mono text-amber-glow uppercase tracking-widest font-black mb-2 text-[#ffb300]">🏢 Connected Warehouses</h5>
+                    <ul className="space-y-2.5 font-mono text-xs">
+                      <li className="flex flex-col border-b border-zinc-900 pb-1.5">
+                        <span className="text-zinc-100 font-bold">Main Godown 1 (Active)</span>
+                        <span className="text-zinc-500 text-[10px]">Pimpri PCNTDA Area (5K cases limit)</span>
+                      </li>
+                      <li className="flex flex-col">
+                        <span className="text-zinc-100 font-bold">Depot 2 Secondary Space</span>
+                        <span className="text-zinc-500 text-[10px]">Moshi Toll Plaza Annex (2.5K cases)</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-zinc-850" />
+
+              <div>
+                <h4 className="text-lg font-extrabold text-white mb-3">3. FMCG Trade Promotions & Schemes</h4>
+                <p className="mb-3">
+                  Distributors run schemes to boost retailer volumes. The ERP's Sales Billing Engine checks active SKU offer specifications to inject free trade boxes seamlessly.
+                </p>
+                <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-2 text-xs font-mono">
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Scheme Mechanism:</span>
+                    <span className="text-zinc-100">Buy-Get Free Master Schema</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Field Attribute:</span>
+                    <span className="text-amber-glow font-bold">Offer_Buy_Qty + Offer_Free_Qty</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-400">
+                    <span>Bypass Parameter:</span>
+                    <span className="text-zinc-100">Activated for qualifying product SKU categories</span>
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-zinc-850" />
+
+              <div className="p-5 bg-gradient-to-tr from-yellow-500/5 to-[#ffb300]/0 border border-yellow-500/20 rounded-2xl">
+                <h4 className="text-xs font-black uppercase text-amber-glow tracking-widest font-mono mb-2 text-[#ffb300]">💡 Operational Node Notice</h4>
+                <p className="text-xs leading-relaxed text-zinc-400">
+                  You can explore this ERP node as an <strong>Office Manager</strong>, <strong>Warehouse Handler</strong>, or <strong>Logistics delivery driver</strong>. Switch simulated roles in the top header menu to immediately notice user task isolation.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-5 border-t border-zinc-850 flex justify-end bg-zinc-950/70">
+              <button 
+                onClick={() => setIsDesignModalOpen(false)}
+                className="px-5 py-2 text-xs font-bold bg-[#ffb300] hover:bg-[#ffa000] text-black rounded-xl transition cursor-pointer"
+                id="close-design-btn-footer"
+              >
+                Close Document
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

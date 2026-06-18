@@ -284,7 +284,20 @@ export default function BillingEngine({
         target.offerPieces = 0;
       }
     } else if (field === "cases") {
-      target.cases = Math.max(0, parseInt(value, 10) || 0);
+      const val = Math.max(0, parseInt(value, 10) || 0);
+      target.cases = val;
+
+      const prod = PRODUCTS.find(p => p.Item_Code === target.productCode);
+      const hsnBuyQty = prod?.Offer_Buy_Qty || (prod?.Brand === "Frooti" ? 10 : 0);
+      const hsnFreeQty = prod?.Offer_Free_Qty || (prod?.Brand === "Frooti" ? 1 : 0);
+      const cp = prod?.Case_Pack || 24;
+
+      if (hsnBuyQty > 0 && hsnFreeQty > 0 && val >= hsnBuyQty) {
+        const factors = Math.floor(val / hsnBuyQty);
+        target.offerPieces = factors * hsnFreeQty * cp;
+      } else {
+        target.offerPieces = 0;
+      }
     } else if (field === "offerPieces") {
       target.offerPieces = Math.max(0, parseInt(value, 10) || 0);
     } else if (field === "manualRate") {
